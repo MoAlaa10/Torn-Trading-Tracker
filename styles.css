@@ -8,6 +8,7 @@ body {
 h1 {
   text-align: center;
   color: #333;
+  margin-bottom: 20px; /* Space below the title */
 }
 
 .container {
@@ -16,6 +17,7 @@ h1 {
   padding: 25px;
   border-radius: 10px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  max-width: 800px; /* Max width for better readability */
 }
 
 section {
@@ -25,6 +27,8 @@ section {
 h2 {
   color: #007bff;
   margin-bottom: 15px;
+  border-bottom: 2px solid #007bff; /* Underline for headers */
+  padding-bottom: 5px; /* Space under the header */
 }
 
 form {
@@ -42,12 +46,19 @@ form {
 label {
   margin-bottom: 5px;
   font-weight: bold;
+  color: #333; /* Label color */
 }
 
 input {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 5px;
+  transition: border-color 0.3s; /* Smooth border color change */
+}
+
+input:focus {
+  border-color: #007bff; /* Change border color on focus */
+  outline: none; /* Remove outline */
 }
 
 button {
@@ -58,15 +69,17 @@ button {
   border-radius: 5px;
   cursor: pointer;
   align-self: flex-end;
+  transition: background-color 0.3s; /* Smooth button color change */
 }
 
 button:hover {
-  background-color: #218838;
+  background-color: #218838; /* Darker green on hover */
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  margin-top: 15px; /* Space above the table */
 }
 
 table, th, td {
@@ -76,6 +89,7 @@ table, th, td {
 th, td {
   padding: 12px;
   text-align: center;
+  font-size: 14px; /* Increased font size for better readability */
 }
 
 th {
@@ -104,6 +118,7 @@ button.delete-btn {
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  font-size: 12px; /* Font size for action buttons */
 }
 
 button.edit-btn {
@@ -146,7 +161,6 @@ button.delete-btn {
     padding: 4px 6px;
   }
 }
-
 
 /* Responsive table container to enable horizontal scrolling */
 .table-container {
