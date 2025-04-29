@@ -1,147 +1,238 @@
-// Initialize arrays to store transactions and original prices
-let transactions = [];
-let originalPrices = {};
+// Initialize DataTable
+const table = $('#purchasesTable').DataTable({
+    order: [[4, 'desc']],
+    pageLength: 25
+});
 
-// Load data from localStorage when the page loads
-window.onload = function () {
-  if (localStorage.getItem('transactions')) {
-    transactions = JSON.parse(localStorage.getItem('transactions'));
-  }
-  if (localStorage.getItem('originalPrices')) {
-    originalPrices = JSON.parse(localStorage.getItem('originalPrices'));
-  }
-  updateTable();
-  populateItemSuggestions(); // Populate the item suggestions for autocomplete
+// Item ID to name mapping
+const itemMap = {
+    '97': 'Bunch of Flowers',
+    '902': 'Bunch of Carnations',
+    '129': 'Dozen Roses',
+    '901': 'Daffodil',
+    '904': 'Funeral Wreath',
+    '183': 'Single Red Rose',
+    '184': 'Bunch of Black Roses',
+    '260': 'Dahlia',
+    '272': 'Edelweiss',
+    '903': 'White Lily',
+    '263': 'Crocus',
+    '617': 'Banana Orchid',
+    '264': 'Orchid',
+    '271': 'Ceibo Flower',
+    '267': 'Heather',
+    '277': 'Cherry Blossom',
+    '276': 'Peony',
+    '282': 'African Violet',
+    '385': 'Tribulus Omanense',
+    '435': 'Dozen White Roses',
+    '187': 'Teddy Bear Plushie',
+    '186': 'Sheep Plushie',
+    '215': 'Kitten Plushie',
+    '273': 'Chamois Plushie',
+    '261': 'Wolverine Plushie',
+    '618': 'Stingray Plushie',
+    '258': 'Jaguar Plushie',
+    '266': 'Nessie Plushie',
+    '268': 'Red Fox Plushie',
+    '269': 'Monkey Plushie',
+    '274': 'Panda Plushie',
+    '281': 'Lion Plushie',
+    '384': 'Camel Plushie',
+    '180': 'Bottle of Beer',
+    '426': 'Bottle of Tequila',
+    '294': 'Bottle of Sake',
+    '181': 'Bottle of Champagne',
+    '550': 'Bottle of Kandy Kane',
+    '531': 'Bottle of Pumpkin Brew',
+    '542': 'Bottle of Wicked Witch',
+    '551': 'Bottle of Minty Mayhem',
+    '638': 'Bottle of Christmas Cocktail',
+    '552': 'Bottle of Mistletoe Madness',
+    '541': 'Bottle of Stinky Swamp Punch',
+    '984': 'Bottle of Moonshine',
+    '873': 'Bottle of Green Stout',
+    '924': 'Bottle of Christmas Spirit',
+    '985': 'Can of Goose Juice',
+    '986': 'Can of Damp Valley',
+    '987': 'Can of Crocozade',
+    '553': 'Can of Santa Shooters',
+    '530': 'Can of Munster',
+    '554': 'Can of Rockstar Rudolph',
+    '532': 'Can of Red Cow',
+    '533': 'Can of Taurine Elite',
+    '555': 'Can of X-MASS',
+    '206': 'Xanax',
+    '368': 'Lawyer\'s Business Card',
+    '366': 'Erotic DVD',
+    '367': 'Feathery Hotel Coupon',
+    '329': 'Skateboard',
+    '106': 'Parachute',
+    '331': 'Dumbbells',
+    '330': 'Boxing Gloves',
+    '815': 'Keg of Beer',
+    '365': 'Box of Medical Supplies',
+    '369': 'Lottery Voucher',
+    '817': 'Six-Pack of Alcohol',
+    '364': 'Box of Grenades',
+    '818': 'Six-Pack of Energy Drink',
+    '283': 'Donator Pack',
 };
 
-// Function to populate the item suggestions for autocomplete
-function populateItemSuggestions() {
-  const datalist = document.getElementById("item-suggestions");
-  datalist.innerHTML = ""; // Clear existing options
-
-  // Populate with item names from originalPrices
-  Object.keys(originalPrices).forEach(item => {
-    const option = document.createElement("option");
-    option.value = item; // Set the item name as the value
-    datalist.appendChild(option);
-  });
+// Load purchases from localStorage
+function loadPurchases() {
+    const purchases = JSON.parse(localStorage.getItem('tornPurchases') || '[]');
+    table.clear();
+    purchases.forEach(p => {
+        table.row.add([
+            p.itemName,
+            p.quantity,
+            p.price.toFixed(2),
+            (p.quantity * p.price).toFixed(2),
+            new Date(p.date).toLocaleString(),
+            p.source
+        ]);
+    });
+    table.draw();
 }
 
-// Function to save data to localStorage
-function saveData() {
-  localStorage.setItem('transactions', JSON.stringify(transactions));
-  localStorage.setItem('originalPrices', JSON.stringify(originalPrices));
+// Save purchase to localStorage
+function savePurchase(purchase) {
+    const purchases = JSON.parse(localStorage.getItem('tornPurchases') || '[]');
+    const exists = purchases.some(p => 
+        p.itemName === purchase.itemName && 
+        p.quantity === purchase.quantity && 
+        p.date === purchase.date
+    );
+    if (!exists) {
+        purchases.push(purchase);
+        localStorage.setItem('tornPurchases', JSON.stringify(purchases));
+        loadPurchases();
+        return true;
+    }
+    return false;
 }
 
-// Function to calculate profit or loss for a transaction
-function calculateProfit(transaction) {
-  const originalPrice = originalPrices[transaction.itemName] || 0;
-  const totalBuying = transaction.buyingPrice * transaction.quantity;
-  const totalOriginal = originalPrice * transaction.quantity;
-  const profit = totalOriginal - totalBuying;
-  return profit;
-}
+// Load API key from localStorage on page load
+$(document).ready(() => {
+    loadPurchases();
+    const savedApiKey = localStorage.getItem('tornApiKey');
+    if (savedApiKey) {
+        $('#apiKey').val(savedApiKey);
+    }
 
-// Function to update the transaction table
-function updateTable() {
-  const tableBody = document.getElementById('transactionTable');
-  tableBody.innerHTML = ''; // Clear existing rows
-
-  transactions.forEach((transaction, index) => {
-    const profit = calculateProfit(transaction);
-    const profitClass = profit >= 0 ? 'profit' : 'loss';
-
-    const row = document.createElement('tr');
-
-    row.innerHTML = `
-      <td>${transaction.itemName}</td>
-      <td>${transaction.quantity}</td>
-      <td>${transaction.buyingPrice.toLocaleString()}</td>
-      <td>${(originalPrices[transaction.itemName] || 'N/A').toLocaleString()}</td>
-      <td>${(transaction.buyingPrice * transaction.quantity).toLocaleString()}</td>
-      <td>${(originalPrices[transaction.itemName] * transaction.quantity || 'N/A').toLocaleString()}</td>
-      <td class="${profitClass}">${profit !== 'N/A' ? profit.toLocaleString() : 'N/A'}</td>
-      <td>
-        <button class="edit-btn" onclick="editTransaction(${index})">Edit</button>
-        <button class="delete-btn" onclick="deleteTransaction(${index})">Delete</button>
-      </td>
-    `;
-
-    tableBody.appendChild(row);
-  });
-}
-
-// Handle adding a new transaction
-document.getElementById('transactionForm').addEventListener('submit', function (event) {
-  event.preventDefault();
-
-  const itemName = document.getElementById('itemName').value.trim();
-  const quantity = parseInt(document.getElementById('quantity').value);
-  const buyingPrice = parseFloat(document.getElementById('buyingPrice').value);
-
-  if (itemName === '' || isNaN(quantity) || isNaN(buyingPrice)) {
-    alert('Please fill in all fields correctly.');
-    return;
-  }
-
-  // Add the new transaction
-  transactions.push({
-    itemName,
-    quantity,
-    buyingPrice
-  });
-
-  // Save and update the table
-  saveData();
-  updateTable();
-
-  // Reset the form
-  document.getElementById('transactionForm').reset();
+    // Initialize autocomplete for calcItemName
+    const purchases = JSON.parse(localStorage.getItem('tornPurchases') || '[]');
+    const itemNames = [...new Set([
+        ...purchases.map(p => p.itemName),
+        ...Object.values(itemMap)
+    ])];
+    $('#calcItemName').autocomplete({
+        source: itemNames,
+        minLength: 2
+    });
 });
 
-// Handle setting original prices
-document.getElementById('priceForm').addEventListener('submit', function (event) {
-  event.preventDefault();
-
-  const originalItemName = document.getElementById('originalItemName').value.trim();
-  const originalPrice = parseFloat(document.getElementById('originalPrice').value);
-
-  if (originalItemName === '' || isNaN(originalPrice)) {
-    alert('Please fill in all fields correctly.');
-    return;
-  }
-
-  // Set the original price for the item
-  originalPrices[originalItemName] = originalPrice;
-
-  // Save and update the table
-  saveData();
-  updateTable();
-  populateItemSuggestions(); // Update suggestions after setting original prices
-
-  // Reset the form
-  document.getElementById('priceForm').reset();
+// Save API key to localStorage on input change
+$('#apiKey').on('input', () => {
+    const apiKey = $('#apiKey').val().trim();
+    localStorage.setItem('tornApiKey', apiKey);
 });
 
-// Handle editing a transaction
-function editTransaction(index) {
-  const transaction = transactions[index];
+// Fetch recent purchases from Torn API
+$('#fetchPurchases').click(async () => {
+    const apiKey = $('#apiKey').val().trim();
+    if (!apiKey) {
+        alert('Please enter a valid API key.');
+        return;
+    }
+    try {
+        const response = await fetch(`https://api.torn.com/user/?selections=log&key=${apiKey}`);
+        const data = await response.json();
+        if (data.error) {
+            alert(`API Error: ${data.error.error} (Code: ${data.error.code})`);
+            return;
+        }
+        const logs = data.log || {};
+        let newPurchases = 0;
+        Object.values(logs).forEach(log => {
+            if (log.title === 'Item market buy' || log.title === 'Bazaar buy') {
+                const data = log.data || {};
+                const items = data.items || [];
+                const costEach = data.cost_each || 0;
+                const source = log.title === 'Item market buy' ? 'Item Market' : 'Bazaar';
+                items.forEach(item => {
+                    const itemId = item.id.toString();
+                    const itemName = itemMap[itemId] || `Unknown Item (ID: ${itemId})`;
+                    if (!itemMap[itemId]) {
+                        console.warn(`Unknown item ID: ${itemId}. Please update itemMap.`);
+                    }
+                    const quantity = item.qty || 1;
+                    if (quantity > 0 && costEach > 0) {
+                        const purchase = {
+                            itemName,
+                            quantity,
+                            price: costEach,
+                            date: new Date(log.timestamp * 1000).toISOString(),
+                            source
+                        };
+                        if (savePurchase(purchase)) {
+                            newPurchases++;
+                        }
+                    } else {
+                        console.warn('Skipping invalid purchase:', log);
+                    }
+                });
+            }
+        });
+        alert(newPurchases > 0 ? `${newPurchases} purchases fetched successfully!` : 'No new purchases found.');
+    } catch (err) {
+        alert('Error fetching purchases: ' + err.message);
+        console.error('Fetch Error:', err);
+    }
+});
 
-  // Pre-fill the form with the transaction data
-  document.getElementById('itemName').value = transaction.itemName;
-  document.getElementById('quantity').value = transaction.quantity;
-  document.getElementById('buyingPrice').value = transaction.buyingPrice;
+// Toggle manual entry form
+$('#addManual').click(() => $('#manualForm').toggle());
+$('#cancelManual').click(() => $('#manualForm').hide());
 
-  // Delete the original transaction and update the table
-  deleteTransaction(index);
-}
+// Handle manual purchase form submission
+$('#purchaseForm').submit(e => {
+    e.preventDefault();
+    const purchase = {
+        itemName: $('#itemName').val(),
+        quantity: parseInt($('#quantity').val()),
+        price: parseFloat($('#price').val()),
+        date: new Date().toISOString(),
+        source: $('#source').val()
+    };
+    savePurchase(purchase);
+    $('#purchaseForm')[0].reset();
+    $('#manualForm').hide();
+});
 
-// Handle deleting a transaction
-function deleteTransaction(index) {
-  // Remove the transaction from the array
-  transactions.splice(index, 1);
+// Calculate item purchase summary
+$('#calcItemName').on('input', () => {
+    const itemName = $('#calcItemName').val().trim();
+    const purchases = JSON.parse(localStorage.getItem('tornPurchases') || '[]');
+    const itemPurchases = purchases.filter(p => p.itemName.toLowerCase().includes(itemName.toLowerCase()));
 
-  // Save and update the table
-  saveData();
-  updateTable();
-}
+    if (itemPurchases.length > 0) {
+        const totalQuantity = itemPurchases.reduce((sum, p) => sum + p.quantity, 0);
+        const totalPrice = itemPurchases.reduce((sum, p) => sum + p.quantity * p.price, 0);
+        const prices = itemPurchases.map(p => p.price);
+        const avgPrice = itemPurchases.reduce((sum, p) => sum + p.price * p.quantity, 0) / totalQuantity;
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+
+        $('#itemNameDisplay').text(itemName || 'Matching Items');
+        $('#totalQuantity').text(totalQuantity);
+        $('#avgPrice').text(avgPrice.toFixed(2));
+        $('#minPrice').text(minPrice.toFixed(2));
+        $('#maxPrice').text(maxPrice.toFixed(2));
+        $('#totalPrice').text(totalPrice.toFixed(2));
+        $('#calcResults').show();
+    } else {
+        $('#calcResults').hide();
+    }
+});
