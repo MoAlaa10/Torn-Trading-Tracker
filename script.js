@@ -1,7 +1,17 @@
+// Enable custom sorting by data-order attribute
+$.fn.dataTable.ext.order['dom-data-order'] = function(settings, col) {
+    return this.api().column(col, { order: 'index' }).nodes().map(function(td) {
+        return $('span', td).data('order') || 0;
+    });
+};
+
 // Initialize DataTable
 const table = $('#purchasesTable').DataTable({
     order: [[4, 'desc']],
-    pageLength: 25
+    pageLength: 25,
+    columnDefs: [
+        { targets: 4, orderDataType: 'dom-data-order' }
+    ]
 });
 
 // Item ID to name mapping
@@ -84,12 +94,16 @@ function loadPurchases() {
     const purchases = JSON.parse(localStorage.getItem('tornPurchases') || '[]');
     table.clear();
     purchases.forEach(p => {
+        const dateObj = new Date(p.date);
+        const timestamp = dateObj.getTime(); // numeric sort value
+        const displayDate = dateObj.toLocaleString(); // user-friendly format
+
         table.row.add([
             p.itemName,
             p.quantity,
             p.price.toFixed(2),
             (p.quantity * p.price).toFixed(2),
-            new Date(p.date).toLocaleString(),
+            `<span data-order="${timestamp}">${displayDate}</span>`,
             p.source
         ]);
     });
