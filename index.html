@@ -1,77 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Torn City Trading Tracker</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torn Purchase Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Torn City Trading Tracker</h1>
-
-  <div class="container">
-    <!-- Form to add new transactions -->
-    <section>
-      <h2>Add New Transaction</h2>
-      <form id="transactionForm">
-        <div class="form-group">
-          <label for="itemName">Item Name:</label>
-          <input type="text" id="itemName" list="item-suggestions" required placeholder="Type item name...">
-          <datalist id="item-suggestions">
-            <!-- Suggestions will be populated here -->
-          </datalist>
+    <div class="container mt-4">
+        <h1>Torn Purchase Tracker</h1>
+        <div class="mb-3">
+            <label for="apiKey" class="form-label">Torn API Key</label>
+            <input type="text" class="form-control" id="apiKey" placeholder="Enter your Torn API key">
         </div>
-        <div class="form-group">
-          <label for="quantity">Qty:</label>
-          <input type="number" id="quantity" min="1" required>
+        <button id="fetchPurchases" class="btn btn-primary mb-3">Refresh</button>
+        <button id="addManual" class="btn btn-secondary mb-3">Add Manual Purchase</button>
+        
+        <!-- Manual Entry Form (Hidden by Default) -->
+        <div id="manualForm" class="card mb-3" style="display: none;">
+            <div class="card-body">
+                <h5>Add Purchase</h5>
+                <form id="purchaseForm">
+                    <div class="mb-3">
+                        <label for="itemName" class="form-label">Item Name</label>
+                        <input type="text" class="form-control" id="itemName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="quantity" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Price per Item ($)</label>
+                        <input type="number" class="form-control" id="price" min="0" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="source" class="form-label">Source</label>
+                        <select class="form-control" id="source" required>
+                            <option value="Item Market">Item Market</option>
+                            <option value="Bazaar">Bazaar</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <button type="button" id="cancelManual" class="btn btn-secondary">Cancel</button>
+                </form>
+            </div>
         </div>
-        <div class="form-group">
-          <label for="buyingPrice">Buying Price (per item):</label>
-          <input type="number" id="buyingPrice" min="0" required>
+        
+        <!-- Calculation Section -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5>Item Purchase Summary</h5>
+                <div class="mb-3">
+                    <label for="calcItemName" class="form-label">Item Name</label>
+                    <input type="text" class="form-control" id="calcItemName" placeholder="e.g., Monkey Plushie">
+                </div>
+                <div id="calcResults" style="display: none;">
+                    <table class="table table-bordered calc-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Item Name</td>
+                                <td id="itemNameDisplay"></td>
+                            </tr>
+                            <tr>
+                                <td>Total Quantity</td>
+                                <td id="totalQuantity">0</td>
+                            </tr>
+                            <tr>
+                                <td>Average Price ($)</td>
+                                <td id="avgPrice">0.00</td>
+                            </tr>
+                            <tr>
+                                <td>Lowest Price ($)</td>
+                                <td id="minPrice">0.00</td>
+                            </tr>
+                            <tr>
+                                <td>Highest Price ($)</td>
+                                <td id="maxPrice">0.00</td>
+                            </tr>
+                            <tr>
+                                <td>Total Price ($)</td>
+                                <td id="totalPrice">0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        <button type="submit">Add Transaction</button>
-      </form>
-    </section>
-
-    <!-- Form to set original prices -->
-    <section>
-      <h2>Set Original Prices</h2>
-      <form id="priceForm">
-        <div class="form-group">
-          <label for="originalItemName">Item Name:</label>
-          <input type="text" id="originalItemName" required>
-        </div>
-        <div class="form-group">
-          <label for="originalPrice">Original Price (per item):</label>
-          <input type="number" id="originalPrice" min="0" required>
-        </div>
-        <button type="submit">Set Original Price</button>
-      </form>
-    </section>
-
-    <!-- Table to display transactions -->
-    <section>
-      <h2>Transactions</h2>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Buying Price</th>
-              <th>Original Price</th>
-              <th>Total Cost</th>
-              <th>Total Original Cost</th>
-              <th>Profit Loss</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="transactionTable"></tbody>
+        
+        <!-- Purchases Table -->
+        <table id="purchasesTable" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Item Name</th>
+                    <th>Quantity</th>
+                    <th>Price per Item ($)</th>
+                    <th>Total Price ($)</th>
+                    <th>Date</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
         </table>
-      </div>
-    </section>
-  </div>
+    </div>
 
-  <script src="script.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
