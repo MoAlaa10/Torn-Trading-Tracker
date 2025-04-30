@@ -113,9 +113,9 @@ function loadPurchases() {
 // Save purchase to localStorage
 function savePurchase(purchase) {
     const purchases = JSON.parse(localStorage.getItem('tornPurchases') || '[]');
-    const exists = purchases.some(p => 
-        p.itemName === purchase.itemName && 
-        p.quantity === purchase.quantity && 
+    const exists = purchases.some(p =>
+        p.itemName === purchase.itemName &&
+        p.quantity === purchase.quantity &&
         p.date === purchase.date
     );
     if (!exists) {
@@ -160,8 +160,21 @@ $('#fetchPurchases').click(async () => {
         alert('Please enter a valid API key.');
         return;
     }
+    const logIds = {
+        'Item market buy': 1225,
+        'Bazaar buy': 1112
+    }
+
+    const logSelectionIdsString = Object.values(logIds).join(',');
+
     try {
-        const response = await fetch(`https://api.torn.com/user/?selections=log&key=${apiKey}`);
+        const response = await fetch(`https://api.torn.com/user/?selections=log&log=${logSelectionIdsString}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `ApiKey ${apiKey}`
+            }
+        });
         const data = await response.json();
         if (data.error) {
             alert(`API Error: ${data.error.error} (Code: ${data.error.code})`);
@@ -169,12 +182,14 @@ $('#fetchPurchases').click(async () => {
         }
         const logs = data.log || {};
         let newPurchases = 0;
-        Object.values(logs).forEach(log => {
+        Object.entries(logs).forEach(([logId, log]) => {
+            //logId is not used, but could be useful for local storage, if data persistence is wanted in the future
+
             if (log.title === 'Item market buy' || log.title === 'Bazaar buy') {
                 const data = log.data || {};
                 const items = data.items || [];
                 const costEach = data.cost_each || 0;
-                const source = log.title === 'Item market buy' ? 'Item Market' : 'Bazaar';
+                const source = log.title.indexOf("market") !== -1 ? 'Item Market' : 'Bazaar';
                 items.forEach(item => {
                     const itemId = item.id.toString();
                     const itemName = itemMap[itemId] || `Unknown Item (ID: ${itemId})`;
